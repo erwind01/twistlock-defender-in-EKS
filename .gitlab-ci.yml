@@ -1,0 +1,25 @@
+variables:
+  REGION_CODE: <ap-southeast-1>
+  CLUSTER_NAME: <name_eks_cluster>
+  PRISMACLOUD_CONSOLE_URL: https://asia-northeast1.cloud.twistlock.com/xxxxxxx
+  PRISMACLOUD_HOSTNAME: asia-northeast1.cloud.twistlock.com
+  DEFENDER_LOCAL_REG_URI: xxxxxxxxxxxx.dkr.ecr.ap-southeast-1.amazonaws.com/twistlock:defender_32_00_159
+  NAMESPACE: twistlock
+
+stages:
+   - deploy
+
+deploy:
+  stage: deploy
+  image:
+    name: repo/helm-awscli-kubectl:0.2
+    entrypoint: [""]
+  before_script:
+    - aws eks update-kubeconfig --region $REGION_CODE --name $CLUSTER_NAME
+    - curl -L -u $PRISMACLOUD_USER:$PRISMACLOUD_PASSWORD $PRISMACLOUD_CONSOLE_URL/api/v1/util/twistcli > twistcli; chmod a+x twistcli;
+  script:
+    - ./twistcli defender export kubernetes --address $PRISMACLOUD_CONSOLE_URL --user $PRISMACLOUD_USER --password $PRISMACLOUD_PASSWORD --cluster-address $PRISMACLOUD_HOSTNAME --container-runtime 'containerd' --helm --image-name $DEFENDER_LOCAL_REG_URI --namespace $NAMESPACE
+    - kubectl create namespace $NAMESPACE
+    - helm install twistlock-defender-ds --namespace twistlock ./twistlock-defender-helm.tar.gz
+  only:
+    - main
